@@ -9,63 +9,56 @@ df = pd.read_excel("sellers.xlsx")
 # Title
 st.title("Sellers Dashboard")
 
-# Sidebar: Filter by Region
+# Sidebar filter for region
 st.sidebar.header("Filter Options")
-regions = df["REGION"].unique()
-selected_region = st.sidebar.selectbox("Select Region", options=regions)
+selected_region = st.sidebar.selectbox("Select Region", options=df['REGION'].unique())
+filtered_df = df[df['REGION'] == selected_region]
 
-# Filtered DataFrame
-filtered_df = df[df["REGION"] == selected_region]
+# Display filtered data
+st.subheader(f"Vendor Data - Region: {selected_region}")
+st.dataframe(filtered_df)
 
-# Container to display the table
+# Summary stats
 with st.container():
-    st.subheader(f"Seller Data - Region: {selected_region}")
-    st.dataframe(filtered_df)
+    st.subheader("Sales Summary")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Units Sold", int(filtered_df['UNIDADES VENDIDAS'].sum()))
+    col2.metric("Total Sales", f"${int(filtered_df['VENTAS TOTALES'].sum()):,}")
+    col3.metric("Average Sales", f"${int(filtered_df['VENTAS TOTALES'].mean()):,}")
 
-# Graphs
-with st.container():
-    st.subheader("Sales Visualizations")
+# Graphs section
+st.subheader("Sales Graphs")
 
-    col1, col2 = st.columns(2)
+# Units Sold Bar Chart
+fig1, ax1 = plt.subplots()
+ax1.bar(filtered_df['NOMBRE'] + " " + filtered_df['APELLIDO'], filtered_df['UNIDADES VENDIDAS'])
+plt.xticks(rotation=90)
+ax1.set_title("Units Sold per Vendor")
+ax1.set_ylabel("Units Sold")
+st.pyplot(fig1)
 
-    # Units Sold per Region
-    with col1:
-        units_sold = df.groupby("REGION")["UNIDADES VENDIDAS"].sum()
-        st.write("Total Units Sold by Region")
-        fig1, ax1 = plt.subplots()
-        units_sold.plot(kind="bar", ax=ax1)
-        ax1.set_ylabel("Units Sold")
-        st.pyplot(fig1)
+# Total Sales Bar Chart
+fig2, ax2 = plt.subplots()
+ax2.bar(filtered_df['NOMBRE'] + " " + filtered_df['APELLIDO'], filtered_df['VENTAS TOTALES'])
+plt.xticks(rotation=90)
+ax2.set_title("Total Sales per Vendor")
+ax2.set_ylabel("Sales ($)")
+st.pyplot(fig2)
 
-    # Total Sales per Region
-    with col2:
-        total_sales = df.groupby("REGION")["VENTAS TOTALES"].sum()
-        st.write("Total Sales by Region")
-        fig2, ax2 = plt.subplots()
-        total_sales.plot(kind="bar", ax=ax2, color="green")
-        ax2.set_ylabel("Total Sales")
-        st.pyplot(fig2)
+# Average Sales Pie Chart
+avg_sales = filtered_df[['NOMBRE', 'APELLIDO', 'VENTAS TOTALES']].copy()
+avg_sales['Full Name'] = avg_sales['NOMBRE'] + " " + avg_sales['APELLIDO']
+fig3, ax3 = plt.subplots()
+ax3.pie(avg_sales['VENTAS TOTALES'], labels=avg_sales['Full Name'], autopct='%1.1f%%')
+ax3.set_title("Sales Distribution")
+st.pyplot(fig3)
 
-    # Average Sales per Vendor per Region
-    avg_sales = df.groupby("REGION")["VENTAS TOTALES"].mean()
-    st.write("Average Sales per Vendor by Region")
-    fig3, ax3 = plt.subplots()
-    avg_sales.plot(kind="bar", ax=ax3, color="orange")
-    ax3.set_ylabel("Average Sales")
-    st.pyplot(fig3)
+# Vendor-specific display
+st.subheader("Vendor Lookup")
+vendor_list = df['NOMBRE'] + " " + df['APELLIDO']
+selected_vendor = st.selectbox("Select a Vendor", vendor_list)
 
-# Specific Vendor Lookup
-with st.container():
-    st.subheader("Vendor Lookup")
-    vendor_id = st.text_input("Enter Vendor ID or Name (partial allowed):")
-
-    if vendor_id:
-        filtered_vendor = df[
-            df["ID"].astype(str).str.contains(vendor_id, case=False) |
-            df["NOMBRE"].str.contains(vendor_id, case=False) |
-            df["APELLIDO"].str.contains(vendor_id, case=False)
-        ]
-        if not filtered_vendor.empty:
-            st.dataframe(filtered_vendor)
-        else:
-            st.warning("No vendor found with that input.")
+vendor_info = df[vendor_list == selected_vendor]
+if not vendor_info.empty:
+    st.write("### Vendor Information")
+    st.write(vendor_info)
